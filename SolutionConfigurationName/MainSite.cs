@@ -1,15 +1,8 @@
-﻿using System;
-using System.Diagnostics;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.ComponentModel.Design;
-using Microsoft.Win32;
+﻿using System.Runtime.InteropServices;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
 using EnvDTE;
-using EnvDTE80;
 
 namespace SolutionConfigurationName
 {
@@ -19,9 +12,12 @@ namespace SolutionConfigurationName
     [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string)]
     public sealed class MainSite : Package
     {
-        private static DTE2 _DTE2;
-        private static IVsSolutionBuildManager _IVsSolutionBuildManager;
-        private static UpdateSolutionEvents _UpdateSolutionEvents;
+        private static IVsSolutionBuildManager _iVsSolutionBuildManager;
+
+        private uint _solutionEventsCookie;
+        private readonly UpdateSolutionEvents _updateSolutionEvents = new UpdateSolutionEvents();
+
+        public static DTE DTE { get; private set; }
 
         public MainSite() { }
 
@@ -29,30 +25,34 @@ namespace SolutionConfigurationName
         {
             base.Initialize();
 
-            IVsExtensibility extensibility = GetService<IVsExtensibility>();
-            _DTE2 = (DTE2)extensibility.GetGlobalsObject(null).DTE;
+            InitializeGlobalServices();
 
-            _IVsSolutionBuildManager = (IVsSolutionBuildManager)GetService<SVsSolutionBuildManager>();
-            _UpdateSolutionEvents = new UpdateSolutionEvents();
-            int hr;
             uint pdwCookie;
-            hr = _IVsSolutionBuildManager.AdviseUpdateSolutionEvents(_UpdateSolutionEvents, out pdwCookie);
-            Marshal.ThrowExceptionForHR(hr);
+            int hr = _iVsSolutionBuildManager.AdviseUpdateSolutionEvents(_updateSolutionEvents, out pdwCookie);
+            ErrorHandler.ThrowOnFailure(hr);
+            _solutionEventsCookie = pdwCookie;
         }
 
-        private void GetService<T>(out T service)
+        protected override void Dispose(bool disposing)
         {
-            service = (T)GetService(typeof(T));
+            base.Dispose(disposing);
+            if (_solutionEventsCookie != default(uint))
+            {
+                int hr = _iVsSolutionBuildManager.UnadviseUpdateSolutionEvents(_solutionEventsCookie);
+                ErrorHandler.ThrowOnFailure(hr);
+            }
         }
 
-        private T GetService<T>()
+        private void InitializeGlobalServices()
         {
-            return (T)GetService(typeof(T));
-        }
-
-        public static DTE2 DTE2
-        {
-            get { return _DTE2; }
+            if (DTE == null)
+            {
+                DTE = GetGlobalService(typeof (DTE)) as DTE;
+            }
+            if (_iVsSolutionBuildManager == null)
+            {
+                _iVsSolutionBuildManager = GetGlobalService(typeof (SVsSolutionBuildManager)) as IVsSolutionBuildManager;
+            }
         }
     }
 }
