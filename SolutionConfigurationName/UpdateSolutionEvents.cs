@@ -7,8 +7,21 @@ namespace SolutionConfigurationName
 {
     public class UpdateSolutionEvents : IVsUpdateSolutionEvents
     {
+        private const string SlnConfigPropertyName = "SolutionConfigurationName";
+        private const string SlnPlatformPropertyName = "SolutionPlatformName";
+
         private string _lastConfigurationName = string.Empty;
         private string _lastPlatformName = string.Empty;
+
+        public UpdateSolutionEvents()
+        {
+            // defining these / making sure they exist early prevents a race between Visual Studio reading OutputPath
+            // and OnActiveProjectCfgChange below defining the global properties (if they are undefined, VS permanently
+            // ignores them
+            ProjectCollection global = ProjectCollection.GlobalProjectCollection;
+            global.SetGlobalProperty(SlnConfigPropertyName, string.Empty);
+            global.SetGlobalProperty(SlnPlatformPropertyName, string.Empty);
+        }
 
         /// <summary>
         /// This is called every time the active configuration of a project changes (according to MSDN).
@@ -28,13 +41,13 @@ namespace SolutionConfigurationName
             
             if (currentConfigurationName != _lastConfigurationName)
             {
-                global.SetGlobalProperty("SolutionConfigurationName", currentConfigurationName);
+                global.SetGlobalProperty(SlnConfigPropertyName, currentConfigurationName);
                 _lastConfigurationName = currentConfigurationName;
             }
 
             if (currentPlatformName != _lastPlatformName)
             {
-                global.SetGlobalProperty("SolutionPlatformName", currentPlatformName);
+                global.SetGlobalProperty(SlnPlatformPropertyName, currentPlatformName);
                 _lastPlatformName = currentConfigurationName;
             }
 
