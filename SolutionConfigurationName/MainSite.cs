@@ -9,12 +9,14 @@ namespace SolutionConfigurationName
     [PackageRegistration(UseManagedResourcesOnly = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)]
     [Guid(GuidList.guidSolutionConfigurationNamePkgString)]
-    [ProvideAutoLoad(VSConstants.UICONTEXT.SolutionExists_string)]
+    [ProvideAutoLoad(VSConstants.UICONTEXT.NoSolution_string)]
     public sealed class MainSite : Package
     {
         private static IVsSolutionBuildManager _iVsSolutionBuildManager;
 
         private uint _solutionEventsCookie;
+        // Because we load on UICONTEXT.NoSolution_string, we make sure that UpdateSolutionEvents' default 
+        // constructor runs and the vars are first set as early as possible
         private readonly UpdateSolutionEvents _updateSolutionEvents = new UpdateSolutionEvents();
 
         public static DTE DTE { get; private set; }
